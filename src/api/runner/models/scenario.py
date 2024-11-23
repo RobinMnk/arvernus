@@ -1,3 +1,4 @@
+import json
 from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar, Union
 
 from attrs import define as _attrs_define
@@ -5,7 +6,7 @@ from attrs import field as _attrs_field
 
 from api.scenarios.models.scenario_dto import ScenarioDTO
 
-from ...types import UNSET, Unset
+from ...types import UNSET, Response, Unset
 
 if TYPE_CHECKING:
     from ..models.customer import Customer
@@ -131,6 +132,12 @@ class Scenario:
 
         scenario.additional_properties = dict()
         return scenario
+
+    @classmethod
+    def from_response(cls: Type[T], src_response: Response[Any]) -> T:
+        scenario_raw = src_response.content.decode("UTF-8")
+        scenario_dict = json.loads(scenario_raw)
+        return cls.from_dict(scenario_dict)
 
     @property
     def additional_keys(self) -> List[str]:

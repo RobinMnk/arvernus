@@ -1,18 +1,17 @@
 from http import HTTPStatus
 from queue import Queue
 import logging
+import queue
 import random
 import threading
 from threading import Thread
 from abc import ABC, abstractmethod
 from typing import override
-import json
 from time import sleep
 
 from api.client import Client
 from api.runner.api.runner import post_launch_scenario
 from api.runner.api.scenarios import get_get_scenario, post_initialize_scenario, put_update_scenario
-from api.runner.models.customer import Customer
 from api.runner.models.scenario import Scenario
 from api.runner.models.update_scenario import UpdateScenario
 from api.runner.models.vehicle import Vehicle
@@ -24,7 +23,7 @@ logging.getLogger().setLevel(logging.INFO)
 
 class BaseStrategy(ABC):
     client: Client
-    threads: list[Thread]
+    api_thread: Thread | None
 
     scenario: Scenario
     sim_speed: float
@@ -37,6 +36,7 @@ class BaseStrategy(ABC):
 
         self.client = client
         self.scenario = scenario
+        self.api_thread = None
 
     def run(self):
         self.threads = []
@@ -47,44 +47,53 @@ class BaseStrategy(ABC):
 
         initialize = post_initialize_scenario.sync_detailed(client=self.client, body=self.scenario)
         assert initialize.status_code == HTTPStatus.OK
+        sleep(3)
 
         launch = post_launch_scenario.sync_detailed(client=self.client, speed=self.sim_speed, scenario_id=self.scenario.id)
         assert launch.status_code == HTTPStatus.OK
+        logging.info(f"Launched scenario: {launch}")
+
+        response = get_get_scenario.sync_detailed(client=self.client, scenario_id=self.scenario.id)
+        self.scenario = Scenario.from_response(response)
 
         vehicles = self.scenario.vehicles
 
         for vehicle in vehicles:
             self.state_queue.put(vehicle)
 
-        thread = threading.Thread(target=self.strategy_loop)
-        self.threads.append(thread)
-        thread.start()
+        self.api_thread = threading.Thread(target=self.loop)
+        self.api_thread.start()
 
-        self.loop()
+        self.strategy_loop()
+
+    @abstractmethod
+    def running(self) -> bool:
+        pass
 
     @abstractmethod
     def strategy_loop(self):
         pass
 
     def loop(self):
+        assert self.scenario.status == "RUNNING"
         logging.info(f"Started api loop")
 
-        while any([customer for customer in self.scenario.customers if customer.awaiting_service]):
-            update = self.update_queue.get()
-            logging.info(update)
+        while self.running():
+            try:
+                update = self.update_queue.get(timeout=0.1)
+                if update:
+                    logging.info(f"Update: {update}")
 
-            response = put_update_scenario.sync_detailed(client=self.client, scenario_id=self.scenario.id, body=update)
+                    response = put_update_scenario.sync_detailed(client=self.client, scenario_id=self.scenario.id, body=update)
+                    logging.info(f"Got updates {response}")
+                    updated_vehicles = Vehicle.from_updated_response(response)
 
-            logging.info(response)
-            updated_vehicles_raw = response.content.decode("UTF-8")
-            updated_vehicles_decoded = json.loads(updated_vehicles_raw)
-            updated_vehicles = [Vehicle.from_dict(vehicle) for vehicle in updated_vehicles_decoded["updatedVehicles"]]
+                    for vehicle in updated_vehicles:
+                        self.state_queue.put(vehicle)
+            except queue.Empty:
+                pass
 
-            for vehicle in updated_vehicles:
-                self.state_queue.put(vehicle)
-
-        for thread in self.threads:
-            thread.join()
+        logging.info("api loop terminated")
 
 
 class RandomStrategy(BaseStrategy):
@@ -92,25 +101,28 @@ class RandomStrategy(BaseStrategy):
         super().__init__(client, scenario)
 
     @override
+    def running(self) -> bool:
+        return self.scenario.status == "RUNNING"
+
+    @override
     def strategy_loop(self):
+        assert self.scenario.status == "RUNNING"
         logging.info(f"Started strategy loop")
 
-        while any([customer for customer in self.scenario.customers if customer.awaiting_service]):
+        while self.scenario.status == "RUNNING":
             response = get_get_scenario.sync_detailed(client=self.client, scenario_id=self.scenario.id)
-            scenario_raw = response.content.decode("UTF-8")
-            self.scenario = Scenario.from_dict(json.loads(scenario_raw))
-
+            self.scenario = Scenario.from_response(response)
             logging.info(f"Got scenario {self.scenario}")
 
-            waiting_vehicles = [vehicle for vehicle in self.scenario.vehicles if vehicle.vehicle_speed == None]
+            waiting_vehicles = [vehicle for vehicle in self.scenario.vehicles if vehicle.is_available]
             waiting_customers = [customer for customer in self.scenario.customers if (customer.awaiting_service and not any([vehicle.customer_id == customer.id for vehicle in self.scenario.vehicles]))]
 
             logging.info(f"Waiting vehicles {waiting_vehicles}")
             logging.info(f"Waiting customers {waiting_customers}")
 
-            assigned_customers = random.sample(list(waiting_customers), len(waiting_vehicles))
+            assigned_customers = random.sample(list(waiting_customers), min(len(waiting_vehicles), len(waiting_customers)))
 
-            if len(waiting_vehicles) > 0:
+            if len(assigned_customers) > 0:
                 vehicle_updates = []
                 for vehicle, customer in zip(waiting_vehicles, assigned_customers):
                     logging.info(f"Assigning vehicle {vehicle.id} to customer {customer.id}")
@@ -120,3 +132,6 @@ class RandomStrategy(BaseStrategy):
                 self.update_queue.put(update)
 
             sleep(1)
+
+        logging.info(f"Simulation finished")
+        self.api_thread.join()

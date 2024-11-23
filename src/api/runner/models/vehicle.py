@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict, List, Type, TypeVar, Union
 
 from attrs import define as _attrs_define
@@ -6,7 +7,7 @@ from attrs import field as _attrs_field
 from api.scenarios.models.standard_magenta_vehicle_dto import StandardMagentaVehicleDTO
 from api.scenarios.models.vehicle_data_dto import VehicleDataDto
 
-from ...types import UNSET, Unset
+from ...types import UNSET, Response, Unset
 
 T = TypeVar("T", bound="Vehicle")
 
@@ -30,7 +31,7 @@ class Vehicle:
     id: str
     coord_x: float
     coord_y: float
-    is_available: Union[Unset, bool] = UNSET
+    is_available: bool
     vehicle_speed: Union[Unset, float] = UNSET
     customer_id: Union[Unset, str] = UNSET
     remaining_travel_time: Union[Unset, float] = UNSET
@@ -67,10 +68,10 @@ class Vehicle:
                 "id": id,
                 "coordX": coord_x,
                 "coordY": coord_y,
+                "isAvailable": is_available,
             }
         )
-        if is_available is not UNSET:
-            field_dict["isAvailable"] = is_available
+
         if vehicle_speed is not UNSET:
             field_dict["vehicleSpeed"] = vehicle_speed
         if customer_id is not UNSET:
@@ -124,6 +125,13 @@ class Vehicle:
 
         vehicle.additional_properties = d
         return vehicle
+
+    @classmethod
+    def from_updated_response(cls: Type[T], src_response: Response[Any]) -> list[T]:
+        updated_vehicles_raw = src_response.content.decode("UTF-8")
+        updated_vehicles_decoded = json.loads(updated_vehicles_raw)
+        updated_vehicles_list = updated_vehicles_decoded["updatedVehicles"] if "updatedVehicles" in updated_vehicles_decoded else []
+        return [cls.from_dict(vehicle) for vehicle in updated_vehicles_list]
 
     @classmethod
     def from_dto(cls: Type[T], src_dto: StandardMagentaVehicleDTO):
