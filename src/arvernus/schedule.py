@@ -15,10 +15,10 @@ from geopy.distance import geodesic
 
 
 class Schedule:
-    _schedule: list[str: list[int]]
+    _schedule: dict[str: list[int]]
 
     def __init__(self, num_vehicles):
-        self._schedule = [list() for _ in range(num_vehicles)]
+        self._schedule = {str: list() for _ in range(num_vehicles)}
 
     def get(self):
         return self._schedule
@@ -26,22 +26,20 @@ class Schedule:
 
 class AnnouncementPlan:
     _lock = threading.Lock()
-    _plan: list[tuple[float, tuple[str, str]]] = list()
+    _plan: dict[str: tuple[float, int]] = list()
 
     def from_schedule(self, schedule: Schedule, scenario: Scenario, simulation_speed: float, start_time, G: nx.DiGraph):
         vehicles = scenario.vehicles
         vehicleCount = len(vehicles)
         customers = scenario.customers
 
-        ap = list()
-        
-        for i in range(len(schedule.get())):
-            vehicleID = vehicles[i].id
-            sendTime = start_time
-            for node in schedule.get()[i]:
-                customerID = customers[node - vehicleCount].id
-                ap.append((sendTime, (vehicleID, customerID)))
-                sendTime = sendTime + (G.get_edge_data(i, node)["cost"] + G.get_edge_data(node, node+1)["cost"]) / 8.33 * simulation_speed
+        ap = dict()
+
+        sendTime = start_time
+        for vId, plan in schedule.get():
+            customerID = customers[node - vehicleCount].id
+            ap[vId] = (sendTime, customerID)
+            # sendTime = sendTime + (G.get_edge_data(i, node)["cost"] + G.get_edge_data(node, node+1)["cost"]) / 8.33 * simulation_speed
 
         ap.sort(key=lambda x: x[0])
         self.update(ap)
@@ -223,13 +221,6 @@ class Arvernus:
 
 
 
-
-
-
-
-
-
-
 class Announcer(BaseStrategy):
     arv: Arvernus
     announcement_plan: AnnouncementPlan
@@ -274,5 +265,3 @@ class Announcer(BaseStrategy):
             self.update_queue.put(update)
 
             sleep(self.sim_speed)  # busy wait
-
-
