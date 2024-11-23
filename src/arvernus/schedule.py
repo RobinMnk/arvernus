@@ -53,14 +53,14 @@ class Arvernus:
     av_veh: dict[str: VehicleAvailability]  # vehicle id -> time, posX, posY
     assignments: dict[str: Assignment]  # vehicle id -> time, cIx
 
-    def __init__(self, state_queue: queue.Queue[Vehicle], ap: AnnouncementPlan, sim_speed: float):
+    def __init__(self, state_queue: queue.Queue[Vehicle], ap: AnnouncementPlan):
         self.state_queue = state_queue
         self.announce_plan = ap
-        self.sim_speed = sim_speed
 
-    def init_scenario(self, scenario: Scenario, start_time: float):
+    def init_scenario(self, scenario: Scenario, start_time: float, sim_speed: float):
         self.scenario = scenario
         self.start_time = start_time
+        self.sim_speed = sim_speed
         self.av_veh = {v.id: (start_time, v.coord_x, v.coord_y) for v in scenario.vehicles}
 
     def compute_assigment(self):
@@ -98,23 +98,27 @@ class Announcer(BaseStrategy):
     arv: Arvernus
     announcement_plan: AnnouncementPlan
     start_time: float
+    sim_speed: float
 
     def __init__(self, client: Client, scenario: Scenario) -> None:
         super().__init__(client, scenario)
 
         self.announcement_plan = AnnouncementPlan()
-        self.arv = Arvernus(self.state_queue, self.announcement_plan, self.sim_speed)
-        self.init_scenario(scenario)
+        self.arv = Arvernus(self.state_queue, self.announcement_plan)
 
         thread = threading.Thread(target=self.arv.refinement_loop)
-        self.threads.append(thread)
         thread.start()
 
-    def init_scenario(self, scenario: Scenario):
+    def init_scenario(self, scenario: Scenario, sim_speed: float):
         self.scenario = scenario
+        self.sim_speed = sim_speed
         self.start_time = time()
-        self.arv.init_scenario(scenario, self.start_time)
+        self.arv.init_scenario(scenario, self.start_time, sim_speed)
         self.arv.compute_assigment()
+
+    def run(self, speed=0.2):
+        self.init_scenario(self.scenario, speed)
+        super().run(speed)
 
     def strategy_loop(self):
         while any([customer for customer in self.scenario.customers if customer.awaiting_service]):
