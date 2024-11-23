@@ -6,6 +6,9 @@ from src.api import Client
 from src.api.runner.models import Scenario, Vehicle, VehicleUpdate
 from src.arvernus.strategy.base_strategy import BaseStrategy
 
+from networkx import from_numpy_matrix, relabel_nodes, DiGraph
+from geopy.distance import geodesic
+
 
 class Schedule:
     _schedule: list[list[int]]
@@ -43,8 +46,54 @@ class Arvernus:
     def compute_assigment(self):
         """ use VRP solver"""
         # init instance
+        customers = scenario.customers
+        vehicles = scenario.vehicles
+        # compute distances + add to adjacency matrix (one start point and end point per costumer)
+        nodeNumber = len(vehicles)+2*len(customers)
+        distanceMatrix = np.zeros((nodeNumber,nodeNumber))
+        
+        countVehicles = len(vehicles)
+        countCostumers = len(customers)
+        
+        for v in range(1,countVehicles):
+            G.add_edge("Source", v, cost=0, time=1)
+        
+        for i  in range(1,countCostumers):
+            distance = geodesic(customers(i)(coord_x,coord_y), customers(i)(destination_x,destination_y)).km
+            G.add_edge(countVehicles+2*i-1,countVehicles+2*i, cost=distance, time=2)
+            
+            for j in range(1,countVehicles):
+                distanceStart = geodesic(vehicles(j)(ccord_x,coord_y), customers(i)(coord_x,coord_y)).km
+                G.add_edge(j,countVehicles+2*i-1, cost=distanceStart, time=2)
+                
+            
+            for k in range(i+1,countCostumers):
+                distanceToOther = geodesic(customers(i)(destination_x,destination_y),customers(k)(coord_x,coord_y)).km
+                G.add_edge(countVehicles+2*i,countVehicles+2*k-1, cost=distanceToOther, time=2)
+            
+                distanceFromOther = geodesic(customers(i)(coord_x,coord_y),customers(k)(destination_x,destination_y)).km
+                G.add_edge(countVehicles+2*k,countVehicles+2*i-1, cost=distanceToOther, time=2)
+            
+            G.add_edge(countVehicles+2*i-1, "Sink", cost = 0, time = 0)
+        
+        for i in range(1,countCostumers):
+            G.nodes[countVehicles+2*i-1]["request"] = countVehicles+2*i
+            G.nodes[countVehicles+2*i-1]["demand"] = 1]
+            G.nodes[countVehicles+2*i]["demand"] = -1]
+    
+        for j in range(1,countVehicles):
+            G.nodes[j]["lower"] = 0
+            G.nodes[j]["upper"] = 2
+    
+        
         # solve instance
+        prob = VehicleRoutingProblem(G, load_capacity=1, pickup_delivery=True, time_windows = True, num_vehicles = countVehicles)
+        
+        prob.solve(cspy=False)
         # extract paths
+        
+        paths = prob.best_routes
+        
         # compute schedule
         # convert to AP
         # set AP
