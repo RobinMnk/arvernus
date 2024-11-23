@@ -13,6 +13,7 @@ dependencies = [
   "vrp>=0.0.3",
   "networkx>=3.4.2",
   "vrpy>=0.5.1",
+  "cspy>=1.0.3",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"

@@ -10,6 +10,7 @@ from api.runner.models.customer import Customer
 from api.runner.models.scenario import Scenario
 from api.runner.models.vehicle import Vehicle
 from api.types import UNSET
+from arvernus.schedule import Announcer
 from arvernus.strategy.base_strategy import RandomStrategy
 
 client = Client(base_url="http://localhost:8090")
@@ -39,6 +40,6 @@ def test_run():
     ]
     scenario = Scenario(str(UUID(int=0)), UNSET, UNSET, UNSET, vehicles, customers)
 
-    strategy = RandomStrategy(client, scenario)
+    strategy = Announcer(client, scenario)
 
     strategy.run(speed=0.002)
