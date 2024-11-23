@@ -1,8 +1,10 @@
 import queue
 import threading
+from collections import namedtuple
 from time import sleep, time
+from geopy.distance import geodesic
 
-from api.runner.models import UpdateScenario
+from api.runner.models import UpdateScenario, Customer
 from src.api import Client
 from src.api.runner.models import Scenario, Vehicle, VehicleUpdate
 from src.arvernus.strategy.base_strategy import BaseStrategy
@@ -17,7 +19,7 @@ class Schedule:
 
 class AnnouncementPlan:
     _lock = threading.Lock()
-    _plan: list[tuple[int, VehicleUpdate]]
+    _plan: list[tuple[float, VehicleUpdate]]
 
     def from_schedule(self, schedule: Schedule, simulation_speed: float, start_time):
         # TODO: ap = convert schedule to ap
@@ -33,18 +35,33 @@ class AnnouncementPlan:
             return self._plan
 
 
+def get_distance_in_meter(customer: Customer):
+    return geodesic((customer.coord_x, customer.coord_y), (customer.destination_x, customer.destination_y)).m
+
+
+VehicleAvailability = namedtuple("VehicleAvailability", "time, posX, posY")
+Assignment = namedtuple("Assignment", "time, cIx")
+
+
 class Arvernus:
     schedule: Schedule
     scenario: Scenario
     state_queue: queue.Queue[Vehicle]
     ap: AnnouncementPlan
+    sim_speed: float
+    start_time: float
+    av_veh: dict[str: VehicleAvailability]  # vehicle id -> time, posX, posY
+    assignments: dict[str: Assignment]  # vehicle id -> time, cIx
 
-    def __init__(self, state_queue: queue.Queue[Vehicle], ap: AnnouncementPlan):
+    def __init__(self, state_queue: queue.Queue[Vehicle], ap: AnnouncementPlan, sim_speed: float):
         self.state_queue = state_queue
         self.announce_plan = ap
+        self.sim_speed = sim_speed
 
-    def init_scenario(self, scenario: Scenario):
+    def init_scenario(self, scenario: Scenario, start_time: float):
         self.scenario = scenario
+        self.start_time = start_time
+        self.av_veh = {v.id: (start_time, v.coord_x, v.coord_y) for v in scenario.vehicles}
 
     def compute_assigment(self):
         """ use VRP solver"""
@@ -53,7 +70,7 @@ class Arvernus:
         # extract paths
         # compute schedule
         # convert to AP
-        # set AP
+        # set AP, av_veh, current_assignment
         pass
 
     def refinement_loop(self):
@@ -66,21 +83,27 @@ class Arvernus:
 
     def process_update(self, moved_vehicle: Vehicle):
         # local updates to schedule
-        pass
+        vId = moved_vehicle.id
+        asm = self.assignments[vId]
+        csm = self.scenario.customers[asm.cIx]
+        dst = get_distance_in_meter(csm)
 
-    def update_schedule(self):
-        return self.schedule
+        self.av_veh[vId] = (
+            asm.time + dst / moved_vehicle.vehicle_speed * self.sim_speed,
+            csm.destination_x, csm.destination_y
+        )
 
 
 class Announcer(BaseStrategy):
     arv: Arvernus
     announcement_plan: AnnouncementPlan
+    start_time: float
 
     def __init__(self, client: Client, scenario: Scenario) -> None:
         super().__init__(client, scenario)
 
         self.announcement_plan = AnnouncementPlan()
-        self.arv = Arvernus(self.state_queue, self.announcement_plan)
+        self.arv = Arvernus(self.state_queue, self.announcement_plan, self.sim_speed)
         self.init_scenario(scenario)
 
         thread = threading.Thread(target=self.arv.refinement_loop)
@@ -89,17 +112,18 @@ class Announcer(BaseStrategy):
 
     def init_scenario(self, scenario: Scenario):
         self.scenario = scenario
-        self.arv.init_scenario(scenario)
+        self.start_time = time()
+        self.arv.init_scenario(scenario, self.start_time)
+        self.arv.compute_assigment()
 
     def strategy_loop(self):
-        start_time = time()
         while any([customer for customer in self.scenario.customers if customer.awaiting_service]):
             ap = self.announcement_plan.get()
 
             if not ap:
                 continue
 
-            current_time = (start_time - time()) / (self.sim_speed + 1e-12)
+            current_time = (time() - self.start_time) / (self.sim_speed + 1e-12)
 
             pending_updates = [
                 VehicleUpdate(self.scenario.vehicles[vIx].id, self.scenario.customers[cIx].id)
@@ -109,6 +133,6 @@ class Announcer(BaseStrategy):
             update = UpdateScenario(pending_updates)
             self.update_queue.put(update)
 
-            sleep(1)  # busy wait
+            sleep(0.1)  # busy wait
 
 
