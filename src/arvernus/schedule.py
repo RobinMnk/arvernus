@@ -158,7 +158,7 @@ class Arvernus:
             
             self.schedule[vehicleNumber] = allNodesVisited
         
-        # set AP, av_veh, current_assignment
+        # set AP, current_assignment
 
     def refinement_loop(self):
         pass
