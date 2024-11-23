@@ -48,9 +48,7 @@ class AnnouncementPlan:
         self.update(ap)
 
     def replace(self, vId: str, timestamp: float, cIx: int):
-        ap = {
-            x: self._plan[x] for x in self._plan.keys()
-        }
+        ap = { x: self._plan[x] for x in self._plan.keys() }
         ap[vId] = (timestamp, cIx)
         self.update(ap)
 
@@ -93,6 +91,8 @@ class Arvernus:
     av_veh: dict[str: VehicleAvailability]  # vehicle id -> time, posX, posY
     assignments: dict[str: Assignment]  # vehicle id -> time, cIx
 
+    cRow : list[list[float]] = list()
+
     def __init__(self, state_queue: queue.Queue[Vehicle], ap: AnnouncementPlan):
         self.state_queue = state_queue
         self.ap = ap
@@ -103,6 +103,7 @@ class Arvernus:
         self.start_time = start_time
         self.sim_speed = sim_speed
         self.av_veh = {v.id: (start_time, v.coord_x, v.coord_y) for v in scenario.vehicles}
+        self.cRow = [0] * len(self.scenario.vehicles)
 
     def compute_VRP(self):
         customers = self.scenario.customers
@@ -115,7 +116,7 @@ class Arvernus:
         for v in range(countVehicles):
             G.add_edge("Source", v, cost=0, time=1)
 
-        for i  in range(countCostumers):
+        for i in range(countCostumers):
             distance = travel_distance_m(customers[i])
             G.add_edge(countVehicles+2*i,countVehicles+2*i+1, cost=distance, time=2)
 
@@ -151,7 +152,7 @@ class Arvernus:
         
         return paths, G
 
-    def compute_assigment(self):
+    def compute_assigment_old(self):
         """ use VRP solver"""
         # compute schedule
         # self.schedule = self.compute_VRP()
@@ -166,7 +167,49 @@ class Arvernus:
         
         # set AP, current_assignment
 
+    def compute_initial_assignment(self):
+        unassigned = [v.id for v in self.scenario.vehicles]
+        positions = [(v.coord_x, v.coord_y) for v in self.scenario.vehicles]
+        times = [self.start_time] * len(self.scenario.vehicles)
+
+        to_announce = list()
+
+        while unassigned:
+            best_option = (173345345, -1, -1)
+            for cIx, customer in enumerate(self.scenario.customers):
+                for vIx, vehicles in enumerate(self.scenario.vehicles):
+                    posX, posY = positions[vIx]
+                    d = customer_reach_distance_m(posX, posY, customer)
+                    arrival_time = times[vIx] + self.distance_to_time(d, 8.3)
+                    if arrival_time < best_option[0]:
+                        best_option = (arrival_time, cIx, vIx)
+
+            arrival_time, cIx, vIx = best_option
+            if times[vIx] == self.start_time:
+                to_announce.append((times[vIx], cIx, vIx))
+                del unassigned[vIx]
+            travel_dist = travel_distance_m(self.scenario.customers[cIx])
+            times[vIx] += arrival_time + self.distance_to_time(travel_dist, 8.3)
+
+        ap_update = { x: self.ap._plan[x] for x in self.ap._plan.keys() }
+        for timestamp, cIx, vIx in to_announce:
+            ap_update[self.scenario.vehicles[vIx].id] = (timestamp, cIx)
+        self.ap.update(ap_update)
+
+    def compute_assignment(self):
+        best_option = (99999999999999, -1, -1)
+        for cIx, customer in enumerate(self.scenario.customers):
+            for vId, (available_time, posX, posY) in self.av_veh:
+                d = customer_reach_distance_m(posX, posY, customer)
+                arrival_time = available_time + self.distance_to_time(d, 8.3)
+                if arrival_time < best_option[0]:
+                    best_option = (available_time, cIx, vId)
+
+        available_time, cIx, vId = best_option
+        self.ap.replace(vId, available_time, cIx)
+
     def refinement_loop(self):
+        self.compute_initial_assignment()
         while True:
             try:
                 moved_vehicle = self.state_queue.get()  # blocking call -> wait for updates
@@ -255,7 +298,7 @@ class Announcer(BaseStrategy):
         self.sim_speed = sim_speed
         self.start_time = time()
         self.arv.init_scenario(scenario, self.start_time, sim_speed)
-        self.arv.compute_assigment()
+        self.arv.compute_initial_assignment()
 
     def run(self, speed=0.2):
         self.init_scenario(self.scenario, speed)
