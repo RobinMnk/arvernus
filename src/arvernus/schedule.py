@@ -25,10 +25,26 @@ class AnnouncementPlan:
     _lock = threading.Lock()
     _plan: list[tuple[float, VehicleUpdate]]
 
-    def from_schedule(self, schedule: Schedule, simulation_speed: float, start_time):
+    def from_schedule(self, schedule: Schedule, scenario: Scenario, simulation_speed: float, start_time, G: nx.DiGraph):
+        vehicles = scenario.vehicles
+        vehicleCount = len(vehicles)
+        customers = scenario.customers
+        
+        for i in range(schedule):
+            vehicleID = vehicles[i].id
+            
+            sendTime = start_time
+            for node in schedule[i]:
+                nodeID = customers[node-vehicleCount]
+                self._plan.append(sendTime,(vehicleID,customerID))
+                sendTime = sendTime + (G.get_edge_data(i,node)["cost"] + G.get_edge_data(node,node+1)["cost"])/8.33
+
+        self._plan.sort(key=lambda x: x[0])
+            
         # TODO: ap = convert schedule to ap
         # self.update(ap)
         pass
+        
 
     def update(self, ap: list[tuple[int, VehicleUpdate]]):
         with self._lock:
@@ -115,15 +131,22 @@ class Arvernus:
 
         paths = prob.best_routes
         
-        return paths
+        return paths, G
 
     def compute_assigment(self):
         """ use VRP solver"""
         # init instance
         # compute schedule
         # convert to AP
-        self.schedule = self.compute_VRP()
+        paths, G = self.compute_VRP()
         
+        for allNodesVisited in paths.values():
+            vehicleNumber = allNodesVisited[1]
+            del allNodesVisited[-1]
+            del allNodesVisited[0]
+            del allNodesVisited[0]
+            
+            self.schedule[vehicleNumber] = allNodesVisited
         
         # set AP, av_veh, current_assignment
         pass
