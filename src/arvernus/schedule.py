@@ -15,7 +15,7 @@ from geopy.distance import geodesic
 
 
 class Schedule:
-    _schedule: list[list[int]]
+    _schedule: list[str: list[int]]
 
     def __init__(self, num_vehicles):
         self._schedule = [list() for _ in range(num_vehicles)]
@@ -26,30 +26,27 @@ class Schedule:
 
 class AnnouncementPlan:
     _lock = threading.Lock()
-    _plan: list[tuple[float, VehicleUpdate]]
+    _plan: list[tuple[float, tuple[str, str]]] = list()
 
     def from_schedule(self, schedule: Schedule, scenario: Scenario, simulation_speed: float, start_time, G: nx.DiGraph):
         vehicles = scenario.vehicles
         vehicleCount = len(vehicles)
         customers = scenario.customers
+
+        ap = list()
         
-        for i in range(schedule):
+        for i in range(len(schedule.get())):
             vehicleID = vehicles[i].id
-            
             sendTime = start_time
-            for node in schedule[i]:
-                nodeID = customers[node-vehicleCount]
-                self._plan.append(sendTime,(vehicleID,customerID))
-                sendTime = sendTime + (G.get_edge_data(i,node)["cost"] + G.get_edge_data(node,node+1)["cost"])/8.33
+            for node in schedule.get()[i]:
+                customerID = customers[node - vehicleCount].id
+                ap.append((sendTime, (vehicleID, customerID)))
+                sendTime = sendTime + (G.get_edge_data(i, node)["cost"] + G.get_edge_data(node, node+1)["cost"]) / 8.33 * simulation_speed
 
-        self._plan.sort(key=lambda x: x[0])
-            
-        # TODO: ap = convert schedule to ap
-        # self.update(ap)
-        pass
-        
+        ap.sort(key=lambda x: x[0])
+        self.update(ap)
 
-    def update(self, ap: list[tuple[int, VehicleUpdate]]):
+    def update(self, ap: list[tuple[int, tuple[str, str]]]):
         with self._lock:
             self._plan = ap
 
@@ -115,25 +112,14 @@ class Arvernus:
             G.add_edge(countVehicles+2*i,countVehicles+2*i+1, cost=distance, time=2)
 
             for j in range(countVehicles):
-<<<<<<< HEAD
                 distanceStart = approach_distance_m(vehicles[j], customers[i])
-=======
-                distanceStart = geodesic((vehicles[j].coord_x,vehicles[j].coord_y), (customers[i].coord_x,customers[i].coord_y)).m
->>>>>>> 02c4f825f01c569a20c801c71406adfef1863611
                 G.add_edge(j,countVehicles+2*i, cost=distanceStart, time=2)
 
             for k in range(i+1,countCostumers):
-<<<<<<< HEAD
                 distanceToOther = end_to_next_distance_m(customers[i], customers[k])
                 G.add_edge(countVehicles+2*i+1,countVehicles+2*k, cost=distanceToOther, time=2)
 
                 distanceFromOther = geodesic((customers[i].coord_x, customers[i].coord_y), (customers[k].destination_x, customers[k].destination_y)).m
-=======
-                distanceToOther = geodesic((customers[i].destination_x,customers[i].destination_y),(customers[k].coord_x,customers[k].coord_y)).m
-                G.add_edge(countVehicles+2*i+1,countVehicles+2*k, cost=distanceToOther, time=2)
-
-                distanceFromOther = geodesic((customers[i].coord_x,customer[i].coord_y),(customers[k].destination_x,customers[k].destination_y)).m
->>>>>>> 02c4f825f01c569a20c801c71406adfef1863611
                 G.add_edge(countVehicles+2*k+1,countVehicles+2*i, cost=distanceFromOther, time=2)
 
             G.add_edge(countVehicles+2*i, "Sink", cost=0, time=10)
@@ -146,7 +132,6 @@ class Arvernus:
         for j in range(countVehicles):
             G.nodes[j]["lower"] = 0
             G.nodes[j]["upper"] = 2
-
 
         # solve instance
         prob = VehicleRoutingProblem(G, load_capacity=1, pickup_delivery=True, time_windows=True, num_vehicles=countVehicles)
@@ -174,15 +159,15 @@ class Arvernus:
             self.schedule[vehicleNumber] = allNodesVisited
         
         # set AP, av_veh, current_assignment
-        pass
 
     def refinement_loop(self):
-        while True:
-            try:
-                moved_vehicle = self.state_queue.get()  # blocking call -> wait for updates
-                self.process_update(moved_vehicle)
-            except queue.Empty:
-                return
+        pass
+        # while True:
+        #     try:
+        #         moved_vehicle = self.state_queue.get()  # blocking call -> wait for updates
+        #         self.process_update(moved_vehicle)
+        #     except queue.Empty:
+        #         return
 
     def distance_to_time(self, dst: float, speed: float):
         return dst / speed * self.sim_speed
@@ -281,8 +266,8 @@ class Announcer(BaseStrategy):
             current_time = (time() - self.start_time) / (self.sim_speed + 1e-12)
 
             pending_updates = [
-                VehicleUpdate(self.scenario.vehicles[vIx].id, self.scenario.customers[cIx].id)
-                for tm, (vIx, cIx) in ap if tm >= current_time
+                VehicleUpdate(vId, cId)
+                for tm, (vId, cId) in ap if tm >= current_time
             ]
 
             update = UpdateScenario(pending_updates)
