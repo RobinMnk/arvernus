@@ -3,6 +3,9 @@ import threading
 from collections import namedtuple
 from time import sleep, time
 
+import networkx as nx
+from vrpy import VehicleRoutingProblem
+
 from api.runner.models import UpdateScenario, Customer
 from src.api import Client
 from src.api.runner.models import Scenario, Vehicle, VehicleUpdate
@@ -64,57 +67,58 @@ class Arvernus:
         self.sim_speed = sim_speed
         self.av_veh = {v.id: (start_time, v.coord_x, v.coord_y) for v in scenario.vehicles}
 
-    def compute_assigment(self):
-        """ use VRP solver"""
-        # init instance
-        customers = scenario.customers
-        vehicles = scenario.vehicles
+
+    def compute_VRP(self):
+        customers = self.scenario.customers
+        vehicles = self.scenario.vehicles
         # compute distances + add to adjacency matrix (one start point and end point per costumer)
-        nodeNumber = len(vehicles)+2*len(customers)
-        distanceMatrix = np.zeros((nodeNumber,nodeNumber))
-        
         countVehicles = len(vehicles)
         countCostumers = len(customers)
-        
-        for v in range(1, countVehicles):
+
+        G = nx.DiGraph()
+        for v in range(countVehicles):
             G.add_edge("Source", v, cost=0, time=1)
-        
-        for i  in range(1,countCostumers):
-            distance = geodesic(customers(i)(coord_x,coord_y), customers(i)(destination_x,destination_y)).km
-            G.add_edge(countVehicles+2*i-1,countVehicles+2*i, cost=distance, time=2)
-            
-            for j in range(1,countVehicles):
+
+        for i  in range(countCostumers):
+            distance = get_distance_in_meter(customers[i])
+            G.add_edge(countVehicles+2*i,countVehicles+2*i+1, cost=distance, time=2)
+
+            for j in range(countVehicles):
                 distanceStart = geodesic(vehicles(j)(ccord_x,coord_y), customers(i)(coord_x,coord_y)).km
                 G.add_edge(j,countVehicles+2*i-1, cost=distanceStart, time=2)
-                
-            
+
+
             for k in range(i+1,countCostumers):
                 distanceToOther = geodesic(customers(i)(destination_x,destination_y),customers(k)(coord_x,coord_y)).km
                 G.add_edge(countVehicles+2*i,countVehicles+2*k-1, cost=distanceToOther, time=2)
-            
+
                 distanceFromOther = geodesic(customers(i)(coord_x,coord_y),customers(k)(destination_x,destination_y)).km
                 G.add_edge(countVehicles+2*k,countVehicles+2*i-1, cost=distanceToOther, time=2)
-            
-            G.add_edge(countVehicles+2*i-1, "Sink", cost = 0, time = 0)
-        
-        for i in range(1,countCostumers):
+
+            G.add_edge(countVehicles+2*i-1, "Sink", cost=0, time=10)
+
+        for i in range(countCostumers):
             G.nodes[countVehicles+2*i-1]["request"] = countVehicles+2*i
-            G.nodes[countVehicles+2*i-1]["demand"] = 1]
-            G.nodes[countVehicles+2*i]["demand"] = -1]
-    
-        for j in range(1,countVehicles):
+            G.nodes[countVehicles+2*i-1]["demand"] = 1
+            G.nodes[countVehicles+2*i]["demand"] = -1
+
+        for j in range(countVehicles):
             G.nodes[j]["lower"] = 0
             G.nodes[j]["upper"] = 2
-    
-        
+
+
         # solve instance
         prob = VehicleRoutingProblem(G, load_capacity=1, pickup_delivery=True, time_windows = True, num_vehicles = countVehicles)
-        
+
         prob.solve(cspy=False)
         # extract paths
-        
+
         paths = prob.best_routes
-        
+
+
+    def compute_assigment(self):
+        """ use VRP solver"""
+        # init instance
         # compute schedule
         # convert to AP
         # set AP, av_veh, current_assignment
