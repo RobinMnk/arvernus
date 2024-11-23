@@ -295,13 +295,12 @@ class Announcer(BaseStrategy):
         self.announcement_plan = AnnouncementPlan()
         self.arv = Arvernus(self.state_queue, self.announcement_plan)
 
-        self.refinement_thread = threading.Thread(target=self.arv.refinement_loop)
-        self.refinement_thread.start()  # TODO: join
-
         self.sim_speed = speed
         self.start_time = time()
-        self.arv.init_scenario(scenario, self.start_time, sim_speed)
-        self.arv.compute_initial_assignment()
+        self.arv.init_scenario(self.scenario, self.start_time, speed)
+
+        self.refinement_thread = threading.Thread(target=self.arv.refinement_loop)
+        self.refinement_thread.start()  # TODO: join
 
         super().run(speed)
 
@@ -311,8 +310,6 @@ class Announcer(BaseStrategy):
 
     @override
     def strategy_loop(self):
-        self.arv.compute_assigment()
-
         last_update = 0
         while True:
             ap = self.announcement_plan.get()
