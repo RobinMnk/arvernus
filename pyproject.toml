@@ -6,8 +6,8 @@ authors = [
   { name = "Simon Hundsdorfer", email = "simon.hundsdorfer@tum.de" },
 ]
 dependencies = [
-    "httpx>=0.27.2",
-    "attrs>=24.2.0",
+  "httpx>=0.27.2",
+  "attrs>=24.2.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
@@ -19,11 +19,11 @@ build-backend = "hatchling.build"
 [tool.rye]
 managed = true
 dev-dependencies = [
-    "pytest>=8.3.3",
+  "pytest>=8.3.3",
 ]
 
 [tool.hatch.metadata]
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/arvernus", "src/runner", "src/scenarios"]
+packages = ["src/arvernus", "src/api"]
