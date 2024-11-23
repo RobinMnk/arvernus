@@ -37,14 +37,24 @@ class AnnouncementPlan:
 
         sendTime = start_time
         for vId, plan in schedule.get():
-            customerID = customers[node - vehicleCount].id
-            ap[vId] = (sendTime, customerID)
+            if plan:
+                ap[vId] = (sendTime, plan[0])
+            else:
+                if vId in ap:
+                    del ap[vId]
             # sendTime = sendTime + (G.get_edge_data(i, node)["cost"] + G.get_edge_data(node, node+1)["cost"]) / 8.33 * simulation_speed
 
         ap.sort(key=lambda x: x[0])
         self.update(ap)
 
-    def update(self, ap: list[tuple[int, tuple[str, str]]]):
+    def replace(self, vId: str, timestamp: float, cIx: int):
+        ap = {
+            x: self._plan[x] for x in self._plan.keys()
+        }
+        ap[vId] = (timestamp, cIx)
+        self.update(ap)
+
+    def update(self, ap: dict[str: tuple[float, int]]):
         with self._lock:
             self._plan = ap
 
@@ -85,7 +95,7 @@ class Arvernus:
 
     def __init__(self, state_queue: queue.Queue[Vehicle], ap: AnnouncementPlan):
         self.state_queue = state_queue
-        self.announce_plan = ap
+        self.ap = ap
 
     def init_scenario(self, scenario: Scenario, start_time: float, sim_speed: float):
         self.scenario = scenario
@@ -150,22 +160,19 @@ class Arvernus:
         
         for allNodesVisited in paths.values():
             vehicleNumber = allNodesVisited[1]
-            del allNodesVisited[-1]
-            del allNodesVisited[0]
-            del allNodesVisited[0]
-            
-            self.schedule[vehicleNumber] = allNodesVisited
+            self.schedule.get()[vehicleNumber] = [node - len(self.scenario.vehicles) for node in allNodesVisited[2:-1]]
+
+        self.ap.from_schedule(self.schedule, self.scenario, self.sim_speed, self.start_time)
         
         # set AP, current_assignment
 
     def refinement_loop(self):
-        pass
-        # while True:
-        #     try:
-        #         moved_vehicle = self.state_queue.get()  # blocking call -> wait for updates
-        #         self.process_update(moved_vehicle)
-        #     except queue.Empty:
-        #         return
+        while True:
+            try:
+                moved_vehicle = self.state_queue.get()  # blocking call -> wait for updates
+                self.process_update(moved_vehicle)
+            except queue.Empty:
+                return
 
     def distance_to_time(self, dst: float, speed: float):
         return dst / speed * self.sim_speed
@@ -178,14 +185,21 @@ class Arvernus:
         tv_dist = travel_distance_m(csm)
         app_dist = approach_distance_m(moved_vehicle, csm)
         speed = moved_vehicle.vehicle_speed
+        next_timestep = asm.time + self.distance_to_time(app_dist, speed) + self.distance_to_time(tv_dist, speed)
 
         # the vehicle will again become available at this time in this place:
         self.av_veh[vId] = (
-            asm.time + self.distance_to_time(app_dist, speed) + self.distance_to_time(tv_dist, speed),
-            csm.destination_x, csm.destination_y
+            next_timestep, csm.destination_x, csm.destination_y
         )
 
-        self.local_optimize(moved_vehicle)
+        # fix AP
+        ls = self.schedule.get()[vId]
+        current_ix = ls.index(asm.cIx)
+        if current_ix != len(ls) - 1:
+            next_customer = ls[current_ix + 1]
+            self.ap.replace(vId, next_timestep, next_customer)
+
+        # self.local_optimize(moved_vehicle)
 
     def time_to_reach(self, vehicle: Vehicle, customer: Customer):
         base_time, posX, posY = self.av_veh[vehicle.id]
@@ -248,18 +262,21 @@ class Announcer(BaseStrategy):
         super().run(speed)
 
     def strategy_loop(self):
+        last_update = 0
         while any([customer for customer in self.scenario.customers if customer.awaiting_service]):
             ap = self.announcement_plan.get()
 
             if not ap:
                 continue
 
-            current_time = (time() - self.start_time) / (self.sim_speed + 1e-12)
+            current_time = (time() - self.start_time) * self.sim_speed
 
             pending_updates = [
                 VehicleUpdate(vId, cId)
-                for tm, (vId, cId) in ap if tm >= current_time
+                for vId, (tm, cId) in ap if tm <= current_time and tm > last_update
             ]
+
+            last_update = current_time
 
             update = UpdateScenario(pending_updates)
             self.update_queue.put(update)
