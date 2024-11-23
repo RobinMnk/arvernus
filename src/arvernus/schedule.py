@@ -28,10 +28,26 @@ class AnnouncementPlan:
     _lock = threading.Lock()
     _plan: list[tuple[float, VehicleUpdate]]
 
-    def from_schedule(self, schedule: Schedule, simulation_speed: float, start_time):
+    def from_schedule(self, schedule: Schedule, scenario: Scenario, simulation_speed: float, start_time, G: nx.DiGraph):
+        vehicles = scenario.vehicles
+        vehicleCount = len(vehicles)
+        customers = scenario.customers
+        
+        for i in range(schedule):
+            vehicleID = vehicles[i].id
+            
+            sendTime = start_time
+            for node in schedule[i]:
+                nodeID = customers[node-vehicleCount]
+                self._plan.append(sendTime,(vehicleID,customerID))
+                sendTime = sendTime + (G.get_edge_data(i,node)["cost"] + G.get_edge_data(node,node+1)["cost"])/8.33
+
+        self._plan.sort(key=lambda x: x[0])
+            
         # TODO: ap = convert schedule to ap
         # self.update(ap)
         pass
+        
 
     def update(self, ap: list[tuple[int, VehicleUpdate]]):
         with self._lock:
@@ -99,14 +115,25 @@ class Arvernus:
             G.add_edge(countVehicles+2*i,countVehicles+2*i+1, cost=distance, time=2)
 
             for j in range(countVehicles):
+<<<<<<< HEAD
                 distanceStart = approach_distance_m(vehicles[j], customers[i])
+=======
+                distanceStart = geodesic((vehicles[j].coord_x,vehicles[j].coord_y), (customers[i].coord_x,customers[i].coord_y)).m
+>>>>>>> 02c4f825f01c569a20c801c71406adfef1863611
                 G.add_edge(j,countVehicles+2*i, cost=distanceStart, time=2)
 
             for k in range(i+1,countCostumers):
+<<<<<<< HEAD
                 distanceToOther = end_to_next_distance_m(customers[i], customers[k])
                 G.add_edge(countVehicles+2*i+1,countVehicles+2*k, cost=distanceToOther, time=2)
 
                 distanceFromOther = geodesic((customers[i].coord_x, customers[i].coord_y), (customers[k].destination_x, customers[k].destination_y)).m
+=======
+                distanceToOther = geodesic((customers[i].destination_x,customers[i].destination_y),(customers[k].coord_x,customers[k].coord_y)).m
+                G.add_edge(countVehicles+2*i+1,countVehicles+2*k, cost=distanceToOther, time=2)
+
+                distanceFromOther = geodesic((customers[i].coord_x,customer[i].coord_y),(customers[k].destination_x,customers[k].destination_y)).m
+>>>>>>> 02c4f825f01c569a20c801c71406adfef1863611
                 G.add_edge(countVehicles+2*k+1,countVehicles+2*i, cost=distanceFromOther, time=2)
 
             G.add_edge(countVehicles+2*i, "Sink", cost=0, time=10)
@@ -128,13 +155,24 @@ class Arvernus:
         # extract paths
 
         paths = prob.best_routes
-
+        
+        return paths, G
 
     def compute_assigment(self):
         """ use VRP solver"""
         # compute schedule
         # self.schedule = self.compute_VRP()
         # convert to AP
+        paths, G = self.compute_VRP()
+        
+        for allNodesVisited in paths.values():
+            vehicleNumber = allNodesVisited[1]
+            del allNodesVisited[-1]
+            del allNodesVisited[0]
+            del allNodesVisited[0]
+            
+            self.schedule[vehicleNumber] = allNodesVisited
+        
         # set AP, av_veh, current_assignment
         pass
 

@@ -141,7 +141,7 @@ class Vehicle:
             coord_y=src_dto.coord_y,
             is_available=src_dto.is_available,
             vehicle_speed=src_dto.vehicle_speed,
-            customer_id=str(src_dto.customer_id),
+            customer_id=str(src_dto.customer_id) if src_dto.customer_id != UNSET else UNSET,
             remaining_travel_time=src_dto.remaining_travel_time,
             distance_travelled=src_dto.distance_travelled,
             active_time=src_dto.active_time,
