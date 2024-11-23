@@ -108,7 +108,7 @@ class Arvernus:
 
 
         # solve instance
-        prob = VehicleRoutingProblem(G, load_capacity=1, pickup_delivery=True, time_windows = True, num_vehicles = countVehicles)
+        prob = VehicleRoutingProblem(G, load_capacity=1, pickup_delivery=True, time_windows=True, num_vehicles=countVehicles)
 
         prob.solve(cspy=False)
         # extract paths
@@ -118,8 +118,8 @@ class Arvernus:
 
     def compute_assigment(self):
         """ use VRP solver"""
-        # init instance
         # compute schedule
+        self.schedule = self.compute_VRP()
         # convert to AP
         # set AP, av_veh, current_assignment
         pass
@@ -143,6 +143,9 @@ class Arvernus:
             asm.time + dst / moved_vehicle.vehicle_speed * self.sim_speed,
             csm.destination_x, csm.destination_y
         )
+
+        # try swapping routes
+        if
 
 
 class Announcer(BaseStrategy):
