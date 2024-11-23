@@ -84,15 +84,15 @@ class Arvernus:
             G.add_edge(countVehicles+2*i,countVehicles+2*i+1, cost=distance, time=2)
 
             for j in range(countVehicles):
-                distanceStart = geodesic(vehicles(j)(ccord_x,coord_y), customers(i)(coord_x,coord_y)).km
+                distanceStart = geodesic((vehicles[j].coord_x,vehicles[j].coord_y), (customers[i].coord_x,customers[i].coord_y)).m
                 G.add_edge(j,countVehicles+2*i, cost=distanceStart, time=2)
 
 
             for k in range(i+1,countCostumers):
-                distanceToOther = geodesic(customers(i)(destination_x,destination_y),customers(k)(coord_x,coord_y)).km
+                distanceToOther = geodesic((customers[i].destination_x,customers[i].destination_y),(customers[k].coord_x,customers[k].coord_y)).m
                 G.add_edge(countVehicles+2*i+1,countVehicles+2*k, cost=distanceToOther, time=2)
 
-                distanceFromOther = geodesic(customers(i)(coord_x,coord_y),customers(k)(destination_x,destination_y)).km
+                distanceFromOther = geodesic((customers[i].coord_x,customer[i].coord_y),(customers[k].destination_x,customers[k].destination_y)).m
                 G.add_edge(countVehicles+2*k+1,countVehicles+2*i, cost=distanceFromOther, time=2)
 
             G.add_edge(countVehicles+2*i, "Sink", cost=0, time=10)
@@ -114,13 +114,17 @@ class Arvernus:
         # extract paths
 
         paths = prob.best_routes
-
+        
+        return paths
 
     def compute_assigment(self):
         """ use VRP solver"""
         # init instance
         # compute schedule
         # convert to AP
+        self.schedule = self.compute_VRP()
+        
+        
         # set AP, av_veh, current_assignment
         pass
 
