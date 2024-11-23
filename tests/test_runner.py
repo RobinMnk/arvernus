@@ -40,6 +40,8 @@ def test_run():
     ]
     scenario = Scenario(str(UUID(int=0)), UNSET, UNSET, UNSET, vehicles, customers)
 
+    # strategy = RandomStrategy(client, scenario)
     strategy = Announcer(client, scenario)
 
+    strategy.initialize()
     strategy.run(speed=0.002)

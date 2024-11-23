@@ -72,6 +72,11 @@ class BaseStrategy(ABC):
 
     def loop(self):
         assert self.scenario.status == "RUNNING"
+
+        vehicles = self.scenario.vehicles
+        for vehicle in vehicles:
+            self.state_queue.put(vehicle)
+
         logging.info(f"Started api loop")
 
         while self.running():
