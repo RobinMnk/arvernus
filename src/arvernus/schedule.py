@@ -173,13 +173,14 @@ class Arvernus:
         # set AP, current_assignment
 
     def compute_initial_assignment(self):
-        unassigned = [v.id for v in self.scenario.vehicles]
+        unassigned = [True] * len(self.scenario.vehicles)
         positions = [(v.coord_x, v.coord_y) for v in self.scenario.vehicles]
         times = [self.start_time] * len(self.scenario.vehicles)
 
         to_announce = list()
+        customers_remaining = len(self.scenario.customers)
 
-        while unassigned:
+        while any(unassigned) and customers_remaining > 0:
             best_option = (173345345, -1, -1)
             for cIx, customer in enumerate(self.scenario.customers):
                 for vIx, vehicles in enumerate(self.scenario.vehicles):
@@ -192,9 +193,10 @@ class Arvernus:
             arrival_time, cIx, vIx = best_option
             if times[vIx] == self.start_time:
                 to_announce.append((times[vIx], cIx, vIx))
-                del unassigned[vIx]
+                unassigned[vIx] = False
             travel_dist = travel_distance_m(self.scenario.customers[cIx])
             times[vIx] += arrival_time + self.distance_to_time(travel_dist, 8.3)
+            customers_remaining -= 1
 
         ap_update = { x: self.ap._plan[x] for x in self.ap._plan.keys() }
         for timestamp, cIx, vIx in to_announce:
