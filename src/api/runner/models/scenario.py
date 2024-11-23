@@ -8,9 +8,8 @@ from api.scenarios.models.scenario_dto import ScenarioDTO
 
 from ...types import UNSET, Response, Unset
 
-if TYPE_CHECKING:
-    from ..models.customer import Customer
-    from ..models.vehicle import Vehicle
+from ..models.customer import Customer
+from ..models.vehicle import Vehicle
 
 
 T = TypeVar("T", bound="Scenario")
