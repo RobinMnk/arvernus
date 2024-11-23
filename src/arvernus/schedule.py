@@ -1,7 +1,8 @@
 import queue
 import threading
-from time import sleep
+from time import sleep, time
 
+from api.runner.models import UpdateScenario
 from src.api import Client
 from src.api.runner.models import Scenario, Vehicle, VehicleUpdate
 from src.arvernus.strategy.base_strategy import BaseStrategy
@@ -20,6 +21,11 @@ class Schedule:
 class AnnouncementPlan:
     _lock = threading.Lock()
     _plan: list[tuple[int, VehicleUpdate]]
+
+    def from_schedule(self, schedule: Schedule, simulation_speed: float, start_time):
+        # TODO: ap = convert schedule to ap
+        # self.update(ap)
+        pass
 
     def update(self, ap: list[tuple[int, VehicleUpdate]]):
         with self._lock:
@@ -135,16 +141,23 @@ class Announcer(BaseStrategy):
         self.arv.init_scenario(scenario)
 
     def strategy_loop(self):
+        start_time = time()
         while any([customer for customer in self.scenario.customers if customer.awaiting_service]):
             ap = self.announcement_plan.get()
 
-            # while ap[-1][0] > current_time:
+            if not ap:
+                continue
+
+            current_time = (start_time - time()) / (self.sim_speed + 1e-12)
+
+            pending_updates = [
+                VehicleUpdate(self.scenario.vehicles[vIx].id, self.scenario.customers[cIx].id)
+                for tm, (vIx, cIx) in ap if tm >= current_time
+            ]
+
+            update = UpdateScenario(pending_updates)
+            self.update_queue.put(update)
+
+            sleep(1)  # busy wait
 
 
-
-            sleep(1) # busy wait
-
-
-    def _push_updates(self):
-        """ push update to out-queue"""
-        pass

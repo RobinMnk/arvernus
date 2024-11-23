@@ -1,6 +1,7 @@
 from http import HTTPStatus
 import random
 from uuid import UUID
+import logging
 
 from api.client import Client
 from api.runner.api.runner import post_launch_scenario
@@ -9,8 +10,13 @@ from api.runner.models.customer import Customer
 from api.runner.models.scenario import Scenario
 from api.runner.models.vehicle import Vehicle
 from api.types import UNSET
+from arvernus.strategy.base_strategy import RandomStrategy
 
 client = Client(base_url="http://localhost:8090")
+
+
+LOGGER = logging.getLogger("module")
+LOGGER.propagate = True
 
 
 def random_x_coord():
@@ -23,18 +29,16 @@ def random_y_coord():
 
 def test_run():
     vehicles = [
-        Vehicle(str(UUID(int=0)), random_x_coord(), random_y_coord()),
-        Vehicle(str(UUID(int=1)), random_x_coord(), random_y_coord()),
+        Vehicle(str(UUID(int=0)), random_x_coord(), random_y_coord(), True),
+        Vehicle(str(UUID(int=1)), random_x_coord(), random_y_coord(), True),
     ]
     customers = [
         Customer(str(UUID(int=0)), random_x_coord(), random_y_coord(), random_x_coord(), random_y_coord(), True),
         Customer(str(UUID(int=1)), random_x_coord(), random_y_coord(), random_x_coord(), random_y_coord(), True),
         Customer(str(UUID(int=2)), random_x_coord(), random_y_coord(), random_x_coord(), random_y_coord(), True),
     ]
-    scenario = Scenario(str(UUID(int=0)), UNSET, UNSET, "CREATED", vehicles, customers)
+    scenario = Scenario(str(UUID(int=0)), UNSET, UNSET, UNSET, vehicles, customers)
 
-    initialize = post_initialize_scenario.sync_detailed(client=client, body=scenario)
-    assert initialize.status_code == HTTPStatus.OK
+    strategy = RandomStrategy(client, scenario)
 
-    launch = post_launch_scenario.sync_detailed(client=client, speed=0.2, scenario_id=scenario.id)
-    assert launch.status_code == HTTPStatus.OK
+    strategy.run(speed=0.002)
