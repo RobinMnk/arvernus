@@ -85,22 +85,22 @@ class Arvernus:
 
             for j in range(countVehicles):
                 distanceStart = geodesic(vehicles(j)(ccord_x,coord_y), customers(i)(coord_x,coord_y)).km
-                G.add_edge(j,countVehicles+2*i-1, cost=distanceStart, time=2)
+                G.add_edge(j,countVehicles+2*i, cost=distanceStart, time=2)
 
 
             for k in range(i+1,countCostumers):
                 distanceToOther = geodesic(customers(i)(destination_x,destination_y),customers(k)(coord_x,coord_y)).km
-                G.add_edge(countVehicles+2*i,countVehicles+2*k-1, cost=distanceToOther, time=2)
+                G.add_edge(countVehicles+2*i+1,countVehicles+2*k, cost=distanceToOther, time=2)
 
                 distanceFromOther = geodesic(customers(i)(coord_x,coord_y),customers(k)(destination_x,destination_y)).km
-                G.add_edge(countVehicles+2*k,countVehicles+2*i-1, cost=distanceToOther, time=2)
+                G.add_edge(countVehicles+2*k+1,countVehicles+2*i, cost=distanceFromOther, time=2)
 
-            G.add_edge(countVehicles+2*i-1, "Sink", cost=0, time=10)
+            G.add_edge(countVehicles+2*i, "Sink", cost=0, time=10)
 
         for i in range(countCostumers):
-            G.nodes[countVehicles+2*i-1]["request"] = countVehicles+2*i
-            G.nodes[countVehicles+2*i-1]["demand"] = 1
-            G.nodes[countVehicles+2*i]["demand"] = -1
+            G.nodes[countVehicles+2*i]["request"] = countVehicles+2*i+1
+            G.nodes[countVehicles+2*i]["demand"] = 1
+            G.nodes[countVehicles+2*i+1]["demand"] = -1
 
         for j in range(countVehicles):
             G.nodes[j]["lower"] = 0
