@@ -92,8 +92,6 @@ class Arvernus:
     av_veh: dict[str:VehicleAvailability]  # vehicle id -> time, posX, posY
     assignments: dict[str:Assignment]  # vehicle id -> time, cIx
 
-    cRow : list[list[float]] = list()
-
     def __init__(self, state_queue: queue.Queue[Vehicle], ap: AnnouncementPlan):
         self.state_queue = state_queue
         self.ap = ap
@@ -310,6 +308,8 @@ class Announcer(BaseStrategy):
 
     @override
     def strategy_loop(self):
+        self.arv.compute_assigment()
+
         last_update = 0
         while True:
             ap = self.announcement_plan.get()
