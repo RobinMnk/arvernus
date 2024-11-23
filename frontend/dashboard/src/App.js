@@ -70,11 +70,11 @@ const App = () => {
           statsData={data}
         />
       )} // Dashboard as the first page
-      dataProvider={() => Promise.resolve({ data: [] })} // Dummy data provider
+      // dataProvider={() => Promise.resolve({ data: [] })} // Dummy data provider
       theme={theme}
     >
       <Resource name="Vehicles" list={() => <Vehicles statsData={data} />} icon={DirectionsCarIcon} />
-      <Resource
+      {/* <Resource
         name="Optimization Criteria"
         list={() => (
           <Optimization
@@ -82,7 +82,7 @@ const App = () => {
           />
         )}
         icon={SettingsSuggestIcon}
-      />
+      /> */}
     </Admin>
   );
 };

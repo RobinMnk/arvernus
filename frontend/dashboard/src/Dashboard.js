@@ -6,14 +6,15 @@ import { useEffect, useState } from "react";
 import LineChartComponent from "./LineChartComponent";
 
 const Dashboard = ({ statsData }) => {
-  const customersAwaitingService = statsData.customers.filter(
-    (customer) => customer.awaitingService === true,
-  ).length;
-  const customersDone = statsData.customers.filter(
-    (customer) => customer.awaitingService === false,
-  ).length;
 
-  const [chartData, setChartData] = useState([]);
+// Get current time in HH:mm format
+const timestamp = new Date().toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+});
+
+const [chartData, setChartData] = useState([]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -24,28 +25,29 @@ const Dashboard = ({ statsData }) => {
         (customer) => customer.awaitingService === true,
       ).length;
 
-      // Get current time in HH:mm format
-      const timestamp = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      });
+      
+      const updatedData = [...chartData, { timestamp, customers: customersAwaitingService }];
+
+      // Keep only the latest 10 data points (optional)
+      if (updatedData.length > 10) {
+        updatedData.shift(); // Remove the oldest entry
+      }
 
       // Update chart data
-      setChartData((prevData) => {
-        const updatedData = [...prevData, { timestamp, customers: customersAwaitingService }];
-
-        // Keep only the latest 10 data points (optional)
-        if (updatedData.length > 10) {
-          updatedData.shift(); // Remove the oldest entry
-        }
-
-        return updatedData;
-      });
+      setChartData(updatedData);
     }, 1000);
 
     return () => clearInterval(interval);
   }, [statsData]);
+
+
+  const customersAwaitingService = !statsData?.customers ? 0 : statsData.customers.filter(
+    (customer) => customer.awaitingService === true,
+  ).length;
+
+  const customersDone = !statsData?.customers ? 0 : statsData.customers.filter(
+    (customer) => customer.awaitingService === false,
+  ).length;
 
   return (
     <Grid2 container spacing={3} padding={3}>
