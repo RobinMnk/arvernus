@@ -3,6 +3,8 @@ from typing import Any, Dict, List, Type, TypeVar, Union
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from api.scenarios.models.customer_dto import CustomerDTO
+
 from ...types import UNSET, Unset
 
 T = TypeVar("T", bound="Customer")
@@ -86,6 +88,20 @@ class Customer:
         )
 
         customer.additional_properties = d
+        return customer
+
+    @classmethod
+    def from_dto(cls: Type[T], src_dto: CustomerDTO):
+        customer = cls(
+            id=str(src_dto.id),
+            coord_x=src_dto.coord_x,
+            coord_y=src_dto.coord_y,
+            destination_x=src_dto.destination_x,
+            destination_y=src_dto.destination_y,
+            awaiting_service=src_dto.awaiting_service,
+        )
+
+        customer.additional_properties = dict()
         return customer
 
     @property

@@ -1,8 +1,10 @@
-from typing import Any, Dict, List, Optional, Type, TypeVar
+from typing import Any, Dict, List, Type, TypeVar, Union
 from uuid import UUID
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
+
+from ...types import UNSET, Unset
 
 T = TypeVar("T", bound="StandardMagentaVehicleDTO")
 
@@ -15,7 +17,7 @@ class StandardMagentaVehicleDTO:
         active_time (int):
         coord_x (float):
         coord_y (float):
-        customer_id (UUID):
+        customer_id (Union[Unset, UUID]):
         distance_travelled (float):
         id (UUID):
         is_available (bool):
@@ -27,7 +29,6 @@ class StandardMagentaVehicleDTO:
     active_time: int
     coord_x: float
     coord_y: float
-    customer_id: Optional[UUID]
     distance_travelled: float
     id: UUID
     is_available: bool
@@ -35,6 +36,7 @@ class StandardMagentaVehicleDTO:
     remaining_travel_time: int
     vehicle_speed: float
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
+    customer_id: Union[Unset, UUID] = UNSET
 
     def to_dict(self) -> Dict[str, Any]:
         active_time = self.active_time
@@ -86,7 +88,7 @@ class StandardMagentaVehicleDTO:
         coord_y = d.pop("coordY")
 
         customer_id_raw = d.pop("customerId")
-        customer_id = UUID(customer_id_raw) if customer_id_raw else None
+        customer_id = UUID(customer_id_raw) if customer_id_raw else UNSET
 
         distance_travelled = d.pop("distanceTravelled")
 

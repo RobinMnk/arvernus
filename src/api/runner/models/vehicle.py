@@ -3,6 +3,9 @@ from typing import Any, Dict, List, Type, TypeVar, Union
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from api.scenarios.models.standard_magenta_vehicle_dto import StandardMagentaVehicleDTO
+from api.scenarios.models.vehicle_data_dto import VehicleDataDto
+
 from ...types import UNSET, Unset
 
 T = TypeVar("T", bound="Vehicle")
@@ -120,6 +123,24 @@ class Vehicle:
         )
 
         vehicle.additional_properties = d
+        return vehicle
+
+    @classmethod
+    def from_dto(cls: Type[T], src_dto: StandardMagentaVehicleDTO):
+        vehicle = cls(
+            id=str(src_dto.id),
+            coord_x=src_dto.coord_x,
+            coord_y=src_dto.coord_y,
+            is_available=src_dto.is_available,
+            vehicle_speed=src_dto.vehicle_speed,
+            customer_id=str(src_dto.customer_id),
+            remaining_travel_time=src_dto.remaining_travel_time,
+            distance_travelled=src_dto.distance_travelled,
+            active_time=src_dto.active_time,
+            number_of_trips=src_dto.number_of_trips,
+        )
+
+        vehicle.additional_properties = dict()
         return vehicle
 
     @property

@@ -125,10 +125,11 @@ class Scenario:
             start_time=src_dto.start_time,
             end_time=src_dto.end_time,
             status=src_dto.status,
-            vehicles=vehicles,
-            customers=customers,
+            vehicles=[Vehicle.from_dto(vehicle) for vehicle in src_dto.vehicles],
+            customers=[Customer.from_dto(customer) for customer in src_dto.customers],
         )
 
+        scenario.additional_properties = dict()
         return scenario
 
     @property
