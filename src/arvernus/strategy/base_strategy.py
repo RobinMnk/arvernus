@@ -6,8 +6,8 @@ import random
 import threading
 from threading import Thread
 from abc import ABC, abstractmethod
-from typing import override
 from time import sleep
+from typing_extensions import override
 
 from api.client import Client
 from api.runner.api.runner import post_launch_scenario
@@ -37,7 +37,7 @@ class BaseStrategy(ABC):
         self.scenario = scenario
         self.api_thread = None
 
-    def run(self, speed=0.2):
+    def initialize(self):
         self.state_queue = Queue()
         self.update_queue = Queue()
 
@@ -45,6 +45,7 @@ class BaseStrategy(ABC):
         assert initialize.status_code == HTTPStatus.OK
         # sleep(3)
 
+    def run(self, speed=0.2):
         launch = post_launch_scenario.sync_detailed(client=self.client, speed=speed, scenario_id=self.scenario.id)
         assert launch.status_code == HTTPStatus.OK
         logging.info(f"Launched scenario: {launch}")
@@ -52,10 +53,9 @@ class BaseStrategy(ABC):
         response = get_get_scenario.sync_detailed(client=self.client, scenario_id=self.scenario.id)
         self.scenario = Scenario.from_response(response)
 
-        vehicles = self.scenario.vehicles
-
-        for vehicle in vehicles:
-            self.state_queue.put(vehicle)
+        # vehicles = self.scenario.vehicles
+        # for vehicle in vehicles:
+        #     self.state_queue.put(vehicle)
 
         self.api_thread = threading.Thread(target=self.loop)
         self.api_thread.start()
