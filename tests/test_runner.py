@@ -41,4 +41,4 @@ def test_run():
 
     strategy = RandomStrategy(client, scenario)
 
-    strategy.run()
+    strategy.run(speed=0.002)

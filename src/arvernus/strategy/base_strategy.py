@@ -26,7 +26,6 @@ class BaseStrategy(ABC):
     api_thread: Thread | None
 
     scenario: Scenario
-    sim_speed: float
 
     state_queue: Queue[Vehicle]
     update_queue: Queue[UpdateScenario]
@@ -38,18 +37,15 @@ class BaseStrategy(ABC):
         self.scenario = scenario
         self.api_thread = None
 
-    def run(self):
-        self.threads = []
-        self.sim_speed = 5
-
+    def run(self, speed=0.2):
         self.state_queue = Queue()
         self.update_queue = Queue()
 
         initialize = post_initialize_scenario.sync_detailed(client=self.client, body=self.scenario)
         assert initialize.status_code == HTTPStatus.OK
-        sleep(3)
+        # sleep(3)
 
-        launch = post_launch_scenario.sync_detailed(client=self.client, speed=self.sim_speed, scenario_id=self.scenario.id)
+        launch = post_launch_scenario.sync_detailed(client=self.client, speed=speed, scenario_id=self.scenario.id)
         assert launch.status_code == HTTPStatus.OK
         logging.info(f"Launched scenario: {launch}")
 
