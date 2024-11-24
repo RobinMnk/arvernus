@@ -220,6 +220,8 @@ class Arvernus:
             if arrival_time < best_option[0]:
                 best_option = (available_time, cIx, moved_vehicle.id)
 
+        if best_option[1] == -1:
+            return
         available_time, cIx, vId = best_option
         self.unassigned_customers[cIx] = False
         self.ap.replace(vId, available_time, cIx)
@@ -332,18 +334,17 @@ class Announcer(BaseStrategy):
             if not ap:
                 continue
 
-            current_time = self.start_time + (time() - self.start_time) * self.sim_speed
+            current_time = time()  # self.start_time + (time() - self.start_time) * self.sim_speed
 
             pending_updates = []
             for vId, (tm, cIx) in ap.items():
-                # logging.info(f"tm: {tm}, current_time: {current_time}")
+                logging.info(f"tm: {tm - self.start_time}, current_time: {current_time - self.start_time}, last_time: {last_update - self.start_time}")
                 if tm <= current_time and tm > last_update:
                     pending_updates.append(VehicleUpdate(vId, self.scenario.customers[cIx].id))
-
-            last_update = current_time
 
             if len(pending_updates) > 0:
                 update = UpdateScenario(pending_updates)
                 self.update_queue.put(update)
+                last_update = current_time
 
             sleep(1.0)
