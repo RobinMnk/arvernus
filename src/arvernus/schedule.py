@@ -91,7 +91,8 @@ class Arvernus:
     sim_speed: float
     start_time: float
     av_veh: dict[str:VehicleAvailability]  # vehicle id -> time, posX, posY
-    assignments: dict[str:Assignment]  # vehicle id -> time, cIx
+
+    unassigned_customers: list[bool]
 
     def __init__(self, state_queue: queue.Queue[Vehicle], ap: AnnouncementPlan):
         self.state_queue = state_queue
@@ -104,6 +105,7 @@ class Arvernus:
         self.sim_speed = sim_speed
         self.av_veh = {v.id: (start_time, v.coord_x, v.coord_y) for v in scenario.vehicles}
         self.cRow = [0] * len(self.scenario.vehicles)
+        self.unassigned_customers = [True] * len(self.scenario.customers)
 
     def compute_VRP(self):
         customers = self.scenario.customers
@@ -175,17 +177,16 @@ class Arvernus:
 
     def compute_initial_assignment(self):
         unassigned_vehicles = [True] * len(self.scenario.vehicles)
-        unassigned_customers = [True] * len(self.scenario.customers)
 
         positions = [(v.coord_x, v.coord_y) for v in self.scenario.vehicles]
         times = [self.start_time] * len(self.scenario.vehicles)
 
         to_announce = list()
 
-        while any(unassigned_vehicles) and any(unassigned_customers):
+        while any(unassigned_vehicles) and any(self.unassigned_customers):
             best_option = (self.start_time + 173345345, -1, -1)
             for cIx, customer in enumerate(self.scenario.customers):
-                if not unassigned_customers[cIx]:
+                if not self.unassigned_customers[cIx]:
                     continue
                 for vIx, vehicles in enumerate(self.scenario.vehicles):
                     posX, posY = positions[vIx]
@@ -199,8 +200,7 @@ class Arvernus:
                 to_announce.append((times[vIx], cIx, vIx))
                 unassigned_vehicles[vIx] = False
 
-            unassigned_customers[cIx] = False
-
+            self.unassigned_customers[cIx] = False
             travel_dist = travel_distance_m(self.scenario.customers[cIx])
             times[vIx] += arrival_time + self.distance_to_time(travel_dist, 8.3)
 
@@ -209,16 +209,19 @@ class Arvernus:
             ap_update[self.scenario.vehicles[vIx].id] = (timestamp, cIx)
         self.ap.update(ap_update)
 
-    def compute_assignment(self):
-        best_option = (99999999999999, -1, -1)
+    def compute_assignment(self, moved_vehicle: Vehicle):
+        best_option = (self.start_time + 173345345, -1, -1)
         for cIx, customer in enumerate(self.scenario.customers):
-            for vId, (available_time, posX, posY) in self.av_veh:
-                d = customer_reach_distance_m(posX, posY, customer)
-                arrival_time = available_time + self.distance_to_time(d, 8.3)
-                if arrival_time < best_option[0]:
-                    best_option = (available_time, cIx, vId)
+            if not self.unassigned_customers[cIx]:
+                continue
+            available_time, posX, posY = self.av_veh[moved_vehicle.id]
+            d = customer_reach_distance_m(posX, posY, customer)
+            arrival_time = available_time + self.distance_to_time(d, 8.3)
+            if arrival_time < best_option[0]:
+                best_option = (available_time, cIx, moved_vehicle.id)
 
         available_time, cIx, vId = best_option
+        self.unassigned_customers[cIx] = False
         self.ap.replace(vId, available_time, cIx)
 
     def refinement_loop(self):
@@ -236,22 +239,28 @@ class Arvernus:
     def process_update(self, moved_vehicle: Vehicle):
         # we now know how fast the vehicle is actually moving
         vId = moved_vehicle.id
-        asm = self.assignments[vId]
-        csm = self.scenario.customers[asm.cIx]
-        tv_dist = travel_distance_m(csm)
-        app_dist = approach_distance_m(moved_vehicle, csm)
+
+        customer = None
+        for c in self.scenario.customers:
+            if c.id == moved_vehicle.customer_id:
+                customer = c
+                break
+
+        tv_dist = travel_distance_m(customer)
+        app_dist = approach_distance_m(moved_vehicle, customer)
         speed = moved_vehicle.vehicle_speed
-        next_timestep = asm.time + self.distance_to_time(app_dist, speed) + self.distance_to_time(tv_dist, speed)
+        next_timestep = self.av_veh[vId][0] + self.distance_to_time(app_dist, speed) + self.distance_to_time(tv_dist, speed)
 
         # the vehicle will again become available at this time in this place:
-        self.av_veh[vId] = (next_timestep, csm.destination_x, csm.destination_y)
+        self.av_veh[vId] = (next_timestep, customer.destination_x, customer.destination_y)
+        self.compute_assignment(moved_vehicle)
 
         # fix AP
-        ls = self.schedule.get()[vId]
-        current_ix = ls.index(asm.cIx)
-        if current_ix != len(ls) - 1:
-            next_customer = ls[current_ix + 1]
-            self.ap.replace(vId, next_timestep, next_customer)
+        # ls = self.schedule.get()[vId]
+        # current_ix = ls.index(asm.cIx)
+        # if current_ix != len(ls) - 1:
+        #     next_customer = ls[current_ix + 1]
+        #     self.ap.replace(vId, next_timestep, next_customer)
 
         # self.local_optimize(moved_vehicle)
 
