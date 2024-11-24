@@ -3,8 +3,8 @@
 // import { Box } from '@mui/material';
 // import DashboardIcon from '@mui/icons-material/Dashboard';
 // import LabelIcon from '@mui/icons-material/Label';
-// import axios from "axios";
 import { createTheme } from "@mui/material/styles";
+import axios from "axios";
 import React from "react";
 import { Admin, Resource } from "react-admin";
 import Dashboard from "./Dashboard";
@@ -45,7 +45,7 @@ const App = () => {
     useEffect(() => {
       const interval = setInterval(async () => {
         const result = await fetchFunction();
-        setData(result);
+        setData(result.data);
       }, intervalMs);
 
       return () => clearInterval(interval);
@@ -54,27 +54,35 @@ const App = () => {
     return data;
   };
 
+  const [scenario_id, set_scenario_id] = useState(undefined);
+
   const fetchData = async () => {
-    const scenario = await fetch("http://localhost:8090/Scenarios/get_scenario/1b3eeea3-2179-4cec-802b-825d8dadea76"); // TODO: remove hardcode
-    const scenarioData = await scenario.json();
-    return scenarioData;
+    if (scenario_id == undefined) {
+      return 0;
+    }
+
+    const scenario = await axios.get(
+      "http://localhost:3000/api/Scenarios/get_scenario/" + scenario_id,
+    );
+
+    return scenario;
   };
 
-  const data = useState(fetchData, 1000);
+  const data = usePolling(fetchData, 1000);
 
   return (
     <Admin
-      layout={MyLayout} // Custom layout for sidebar
+      layout={() => <MyLayout scenario_id={scenario_id} scenario_id_hook={set_scenario_id} />} // Custom layout for sidebar
       dashboard={() => (
         <Dashboard
           statsData={data}
         />
       )} // Dashboard as the first page
-      // dataProvider={() => Promise.resolve({ data: [] })} // Dummy data provider
+      dataProvider={() => Promise.resolve({ data: [] })} // Dummy data provider
       theme={theme}
     >
       <Resource name="Vehicles" list={() => <Vehicles statsData={data} />} icon={DirectionsCarIcon} />
-      {/* <Resource
+      <Resource
         name="Optimization Criteria"
         list={() => (
           <Optimization
@@ -82,7 +90,7 @@ const App = () => {
           />
         )}
         icon={SettingsSuggestIcon}
-      /> */}
+      />
     </Admin>
   );
 };

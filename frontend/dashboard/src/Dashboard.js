@@ -6,15 +6,15 @@ import { useEffect, useState } from "react";
 import LineChartComponent from "./LineChartComponent";
 
 const Dashboard = ({ statsData }) => {
-
-// Get current time in HH:mm format
-const timestamp = new Date().toLocaleTimeString([], {
+  // Get current time in HH:mm format
+  const timestamp = new Date().toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-});
+  });
 
-const [chartData, setChartData] = useState([]);
+  const [chartData, setChartData] = useState([]);
+  console.log(statsData);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -25,7 +25,6 @@ const [chartData, setChartData] = useState([]);
         (customer) => customer.awaitingService === true,
       ).length;
 
-      
       const updatedData = [...chartData, { timestamp, customers: customersAwaitingService }];
 
       // Keep only the latest 10 data points (optional)
@@ -39,7 +38,6 @@ const [chartData, setChartData] = useState([]);
 
     return () => clearInterval(interval);
   }, [statsData]);
-
 
   const customersAwaitingService = !statsData?.customers ? 0 : statsData.customers.filter(
     (customer) => customer.awaitingService === true,

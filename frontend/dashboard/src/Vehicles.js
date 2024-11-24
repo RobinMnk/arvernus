@@ -5,30 +5,30 @@ import PieChartComponent from "./PieChartComponent";
 // import LineChartComponent from "./LineChartComponent";
 
 const Vehicles = ({ statsData }) => {
-  const vehiclesDriving = statsData.vehicles.filter(
+  const vehiclesDriving = !statsData?.vehicles ? 0 : statsData.vehicles.filter(
     (vehicle) => vehicle.isAvailable === false,
   ).length;
 
-  const totalVehicleDistance = statsData.vehicles.reduce(
+  const totalVehicleDistance = !statsData?.vehicles ? 0 : statsData.vehicles.reduce(
     (sum, vehicle) => sum + (vehicle.distanceTravelled || 0),
     0,
   );
 
-  const totalTrips = statsData.vehicles.reduce(
+  const totalTrips = !statsData?.vehicles ? 0 : statsData.vehicles.reduce(
     (sum, vehicle) => sum + (vehicle.numberOfTrips || 0),
     0,
   );
 
-  const fuelConsumption = statsData.Vehicles.sum(
+  const fuelConsumption = !statsData?.vehilces ? 0 : statsData.vehicles.Vehicles.sum(
     (vehicle) => vehicle.isAvailable === false,
   ).length;
 
-  const vehicleBarChartData = statsData.vehicles.map((vehicle, index) => ({
+  const vehicleBarChartData = !statsData?.vehicles ? 0 : statsData.vehicles.map((vehicle, index) => ({
     name: vehicle.id || `Car ${index + 1}`, // Default name if vehicle.name is missing
     distance: vehicle.distanceTravelled || 0, // Default to 0 if distanceTravelled is missing
   }));
 
-  const vehicleTripsPieData = statsData.vehicles.map((vehicle, index) => ({
+  const vehicleTripsPieData = !statsData?.vehicles ? 0 : statsData.vehicles.map((vehicle, index) => ({
     name: vehicle.id || `Car ${index + 1}`, // Default name if vehicle.name is missing
     distance: vehicle.numberOfTrips || 0, // Default to 0 if numberOfTrips is missing
   }));

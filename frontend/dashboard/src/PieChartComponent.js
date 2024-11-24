@@ -1,14 +1,14 @@
-import React from "react";
 import {
-  Chart as ChartJS,
   ArcElement,
-  Tooltip,
-  Legend,
-  LineElement,
   CategoryScale,
+  Chart as ChartJS,
+  Legend,
   LinearScale,
+  LineElement,
   PointElement,
-} from 'chart.js';
+  Tooltip,
+} from "chart.js";
+import React from "react";
 import { Pie } from "react-chartjs-2";
 
 // Register required chart.js components
@@ -19,17 +19,16 @@ ChartJS.register(
   LineElement,
   CategoryScale,
   LinearScale,
-  PointElement
+  PointElement,
 );
-
 
 const PieChartComponent = ({ data }) => {
   const chartData = {
-    labels: data.map((car) => car.name),
+    labels: !data ? 0 : data.map((car) => car.name),
     datasets: [
       {
         label: "Trips",
-        data: data.map((car) => car.trips),
+        data: !data ? 0 : data.map((car) => car.trips),
         backgroundColor: ["#ff6384", "#36a2eb", "#ffce56", "#4bc0c0", "#9966ff"],
       },
     ],
