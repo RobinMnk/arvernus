@@ -271,7 +271,10 @@ class Arvernus:
         if any(self.unassigned_customers):
             self.compute_assignment(moved_vehicle)
         else:
-            finish_time = max([x.time for x in self.av_veh])
+            finish_time = 0
+            for x in self.av_veh.values():
+                finish_time = max(finish_time, x.time)
+
             self.ap.set_finish_time(finish_time)
 
 
