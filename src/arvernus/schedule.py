@@ -90,7 +90,7 @@ class Arvernus:
     ap: AnnouncementPlan
     sim_speed: float
     start_time: float
-    av_veh: dict[str:VehicleAvailability]  # vehicle id -> time, posX, posY
+    av_veh: dict[str, VehicleAvailability]  # vehicle id -> time, posX, posY
 
     unassigned_customers: list[bool]
     sent_messages: int
@@ -248,7 +248,6 @@ class Arvernus:
     def distance_to_time(self, dst: float, speed: float):
         return dst / speed * self.sim_speed
 
-
     def process_update(self, moved_vehicle: Vehicle):
         # we now know how fast the vehicle is actually moving
         vId = moved_vehicle.id
@@ -269,7 +268,6 @@ class Arvernus:
 
         if any(self.unassigned_customers):
             self.compute_assignment(moved_vehicle)
-
 
         # fix AP
         # ls = self.schedule.get()[vId]
@@ -362,7 +360,10 @@ class Announcer(BaseStrategy):
                 update = UpdateScenario(pending_updates)
                 self.update_queue.put(update)
                 last_update = current_time
+                self.num_sent += len(pending_updates)
 
             sleep(1.0)
 
+        logging.info(f"Simulation finished")
         self.refinement_thread.join()
+        self.api_thread.join()
