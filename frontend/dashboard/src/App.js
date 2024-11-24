@@ -40,7 +40,7 @@ const theme = createTheme({
 
 const App = () => {
   const usePolling = (fetchFunction, intervalMs) => {
-    const [data, setData] = useState(null);
+    const [data, setData] = useState(undefined);
 
     useEffect(() => {
       const interval = setInterval(async () => {
@@ -57,27 +57,25 @@ const App = () => {
   const [scenario_id, set_scenario_id] = useState(undefined);
 
   const fetchData = async () => {
-    if (scenario_id == undefined) {
+    if (scenario_id === undefined) {
       return 0;
     }
-
-    const scenario = await axios.get(
-      "http://localhost:3000/api/Scenarios/get_scenario/" + scenario_id,
-    );
-
-    return scenario;
+    try {
+      const scenario = await axios.get(
+        "http://localhost:3000/api/Scenarios/get_scenario/" + scenario_id,
+      );
+      return scenario;
+    } catch (e) {
+      return null;
+    }
   };
 
   const data = usePolling(fetchData, 1000);
 
   return (
     <Admin
-      layout={() => <MyLayout scenario_id={scenario_id} scenario_id_hook={set_scenario_id} />} // Custom layout for sidebar
-      dashboard={() => (
-        <Dashboard
-          statsData={data}
-        />
-      )} // Dashboard as the first page
+      layout={MyLayout} // Custom layout for sidebar
+      dashboard={() => <Dashboard statsData={data} set_scenario_id={set_scenario_id} />} // Dashboard as the first page
       dataProvider={() => Promise.resolve({ data: [] })} // Dummy data provider
       theme={theme}
     >

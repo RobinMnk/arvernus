@@ -11,25 +11,6 @@ import { MyMenu } from "./MyMenu";
 //   );
 
 const MyAppBar = (props) => {
-  const [button_text, set_button_text] = useState("Launch");
-  const [scenario_text, set_scenario_text] = useState("");
-
-  const handleClick = async () => {
-    set_button_text("Running");
-    props.scenario_id_hook(scenario_text);
-
-    await axios.post(
-      "http://localhost:3000/backend/run/" + scenario_text,
-    );
-
-    set_button_text("Launch");
-    props.scenario_id_hook(undefined);
-  };
-
-  const scenarioIdChanged = (event) => {
-    set_scenario_text(event.target.value);
-  };
-
   return (
     <AppBar {...props}>
       {/* Align items with flexbox */}
@@ -40,14 +21,6 @@ const MyAppBar = (props) => {
         <Typography variant="h6" component="div" sx={{ marginLeft: "5px", flexGrow: 2 }}>
           Arvernus
         </Typography>
-        <TextField
-          id="outlined-basic"
-          label="Scenario"
-          variant="filled"
-          onChange={scenarioIdChanged}
-          value={scenario_text}
-        />
-        <Button variant="outlined" onClick={handleClick}>{button_text}</Button>
         {/* Keep only the user menu, no refresh button */}
         <UserMenu />
       </Box>
