@@ -93,6 +93,7 @@ class Arvernus:
     av_veh: dict[str:VehicleAvailability]  # vehicle id -> time, posX, posY
 
     unassigned_customers: list[bool]
+    sent_messages: int
 
     def __init__(self, state_queue: queue.Queue[Vehicle], ap: AnnouncementPlan):
         self.state_queue = state_queue
@@ -104,8 +105,8 @@ class Arvernus:
         self.start_time = start_time
         self.sim_speed = sim_speed
         self.av_veh = {v.id: (start_time, v.coord_x, v.coord_y) for v in scenario.vehicles}
-        self.cRow = [0] * len(self.scenario.vehicles)
         self.unassigned_customers = [True] * len(self.scenario.customers)
+        self.sent_messages = 0
 
     def compute_VRP(self):
         customers = self.scenario.customers
@@ -210,6 +211,7 @@ class Arvernus:
         ap_update = {}
         for timestamp, cIx, vIx in to_announce:
             ap_update[self.scenario.vehicles[vIx].id] = (timestamp, cIx)
+            self.sent_messages += 1
         self.ap.update(ap_update)
 
     def compute_assignment(self, moved_vehicle: Vehicle):
@@ -227,11 +229,12 @@ class Arvernus:
             return
         available_time, cIx, vId = best_option
         self.unassigned_customers[cIx] = False
+        self.sent_messages += 1
         self.ap.replace(vId, available_time, cIx)
 
     def refinement_loop(self):
         self.compute_initial_assignment()
-        while True:
+        while self.sent_messages < len(self.scenario.customers):
             try:
                 moved_vehicle = self.state_queue.get()  # blocking call -> wait for updates
                 self.process_update(moved_vehicle)
