@@ -60,14 +60,14 @@ class BaseStrategy(ABC):
         self.api_thread = threading.Thread(target=self.loop)
         self.api_thread.start()
 
-        self.strategy_loop()
+        self.strategy_loop(speed)
 
     @abstractmethod
     def running(self) -> bool:
         pass
 
     @abstractmethod
-    def strategy_loop(self):
+    def strategy_loop(self, speed):
         pass
 
     def loop(self):
@@ -101,7 +101,7 @@ class RandomStrategy(BaseStrategy):
         return self.scenario.status == "RUNNING"
 
     @override
-    def strategy_loop(self):
+    def strategy_loop(self, speed):
         assert self.scenario.status == "RUNNING"
         logging.info(f"Started strategy loop")
 
@@ -127,7 +127,7 @@ class RandomStrategy(BaseStrategy):
 
                 self.update_queue.put(update)
 
-            sleep(1)
+            sleep(0.5 * speed)
 
         logging.info(f"Simulation finished")
         self.api_thread.join()

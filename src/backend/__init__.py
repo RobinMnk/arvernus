@@ -20,9 +20,10 @@ def run(scenario_id: UUID):
         return make_response("", 404)
 
     scenario = Scenario.from_dto(scenario_dto)
-    speed = float(request.form["speed"])
 
     strategy = RandomStrategy(runner_client, scenario)
-    strategy.run(speed=speed)  # TODO add speed
+
+    strategy.initialize()
+    strategy.run()
 
     return make_response("", 200)

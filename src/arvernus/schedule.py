@@ -340,7 +340,7 @@ class Announcer(BaseStrategy):
         return self.num_sent < len(self.scenario.customers)
 
     @override
-    def strategy_loop(self):
+    def strategy_loop(self, speed):
         last_update = 0
         while self.running():
             ap = self.announcement_plan.get()

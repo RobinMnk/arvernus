@@ -28,6 +28,7 @@ cspy==1.0.3
     # via vrpy
 cycler==0.12.1
     # via matplotlib
+debugpy==1.8.9
 exceptiongroup==1.2.2
     # via anyio
     # via pytest
