@@ -30,6 +30,9 @@ class AnnouncementPlan:
     _lock = threading.Lock()
     _plan: dict[str, tuple[float, int]] = {}
 
+    _lock_ft = threading.Lock()
+    finish_time: float
+
     def from_schedule(self, schedule: Schedule, scenario: Scenario, simulation_speed: float, start_time, G: nx.DiGraph):
         vehicles = scenario.vehicles
         vehicleCount = len(vehicles)
@@ -61,6 +64,14 @@ class AnnouncementPlan:
     def get(self):
         with self._lock:
             return self._plan
+
+    def set_finish_time(self, ft):
+        with self._lock_ft:
+            self.finish_time = ft
+
+    def get_finish_time(self):
+        with self._lock_ft:
+            return self.finish_time
 
 
 def customer_reach_distance_m(posX: float, posY: float, end: Customer):
@@ -238,6 +249,7 @@ class Arvernus:
     def distance_to_time(self, dst: float, speed: float):
         return dst / speed * self.sim_speed
 
+
     def process_update(self, moved_vehicle: Vehicle):
         # we now know how fast the vehicle is actually moving
         vId = moved_vehicle.id
@@ -255,7 +267,13 @@ class Arvernus:
 
         # the vehicle will again become available at this time in this place:
         self.av_veh[vId] = (next_timestep, customer.destination_x, customer.destination_y)
-        self.compute_assignment(moved_vehicle)
+
+        if any(self.unassigned_customers):
+            self.compute_assignment(moved_vehicle)
+        else:
+            finish_time = max([x.time for x in self.av_veh])
+            self.ap.set_finish_time(finish_time)
+
 
         # fix AP
         # ls = self.schedule.get()[vId]
@@ -323,12 +341,12 @@ class Announcer(BaseStrategy):
 
     @override
     def running(self) -> bool:
-        return True  # TODO
+        return (self.announcement_plan.get_finish_time() == 0) or (self.announcement_plan.get_finish_time() > time())
 
     @override
     def strategy_loop(self):
         last_update = 0
-        while True:
+        while self.running():
             ap = self.announcement_plan.get()
 
             if not ap:
@@ -348,3 +366,5 @@ class Announcer(BaseStrategy):
                 last_update = current_time
 
             sleep(1.0)
+
+        self.refinement_thread.join()
