@@ -30,9 +30,6 @@ class AnnouncementPlan:
     _lock = threading.Lock()
     _plan: dict[str, tuple[float, int]] = {}
 
-    _lock_ft = threading.Lock()
-    finish_time: float
-
     def from_schedule(self, schedule: Schedule, scenario: Scenario, simulation_speed: float, start_time, G: nx.DiGraph):
         vehicles = scenario.vehicles
         vehicleCount = len(vehicles)
@@ -64,14 +61,6 @@ class AnnouncementPlan:
     def get(self):
         with self._lock:
             return self._plan
-
-    def set_finish_time(self, ft):
-        with self._lock_ft:
-            self.finish_time = ft
-
-    def get_finish_time(self):
-        with self._lock_ft:
-            return self.finish_time
 
 
 def customer_reach_distance_m(posX: float, posY: float, end: Customer):
@@ -273,12 +262,6 @@ class Arvernus:
 
         if any(self.unassigned_customers):
             self.compute_assignment(moved_vehicle)
-        else:
-            finish_time = 0
-            for x in self.av_veh.values():
-                finish_time = max(finish_time, x.time)
-
-            self.ap.set_finish_time(finish_time)
 
 
         # fix AP
@@ -326,6 +309,7 @@ class Announcer(BaseStrategy):
     announcement_plan: AnnouncementPlan
     start_time: float
     sim_speed: float
+    num_sent: int
 
     def __init__(self, client: Client, scenario: Scenario) -> None:
         super().__init__(client, scenario)
@@ -336,6 +320,7 @@ class Announcer(BaseStrategy):
         self.announcement_plan = AnnouncementPlan()
         self.arv = Arvernus(self.state_queue, self.announcement_plan)
 
+        self.num_sent = 0
         self.sim_speed = speed
         self.start_time = time()
         self.arv.init_scenario(self.scenario, self.start_time, speed)
@@ -347,7 +332,7 @@ class Announcer(BaseStrategy):
 
     @override
     def running(self) -> bool:
-        return (self.announcement_plan.get_finish_time() == 0) or (self.announcement_plan.get_finish_time() > time())
+        return self.num_sent < len(self.scenario.customers)
 
     @override
     def strategy_loop(self):
