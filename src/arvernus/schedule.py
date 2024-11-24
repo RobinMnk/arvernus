@@ -198,7 +198,7 @@ class Arvernus:
         while any(unassigned_vehicles) and any(self.unassigned_customers):
             best_option = (self.start_time + 173345345, -1, -1)
             for cIx, customer in enumerate(self.scenario.customers):
-                if not self.unassigned_customers[cIx] and cIx not in blocked:
+                if not self.unassigned_customers[cIx] or cIx in blocked:
                     continue
                 for vIx, vehicles in enumerate(self.scenario.vehicles):
                     posX, posY = positions[vIx]
@@ -216,7 +216,7 @@ class Arvernus:
                 blocked.add(cIx)
 
             travel_dist = travel_distance_m(self.scenario.customers[cIx])
-            times[vIx] += arrival_time + self.distance_to_time(travel_dist, 8.3)
+            times[vIx] = arrival_time + self.distance_to_time(travel_dist, 8.3)
 
         ap_update = {}
         for timestamp, cIx, vIx in to_announce:
