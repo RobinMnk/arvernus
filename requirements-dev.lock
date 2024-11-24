@@ -59,6 +59,8 @@ kiwisolver==1.4.7
 markupsafe==3.0.2
     # via jinja2
     # via werkzeug
+matching==1.4.3
+    # via arvernus
 matplotlib==3.9.2
     # via vrp
 networkx==3.4.2
@@ -68,6 +70,7 @@ networkx==3.4.2
 numpy==2.1.3
     # via contourpy
     # via cspy
+    # via matching
     # via matplotlib
     # via vrpy
 packaging==24.2

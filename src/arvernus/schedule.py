@@ -2,6 +2,7 @@ import queue
 import threading
 from collections import namedtuple
 from time import sleep, time
+from pulp import logging
 from typing_extensions import override
 
 import networkx as nx
@@ -16,7 +17,7 @@ from geopy.distance import geodesic
 
 
 class Schedule:
-    _schedule: dict[str : list[int]]
+    _schedule: dict[str, list[int]]
 
     def __init__(self, num_vehicles):
         self._schedule = {str: list() for _ in range(num_vehicles)}
@@ -27,7 +28,7 @@ class Schedule:
 
 class AnnouncementPlan:
     _lock = threading.Lock()
-    _plan: dict[str : tuple[float, int]] = list()
+    _plan: dict[str, tuple[float, int]] = {}
 
     def from_schedule(self, schedule: Schedule, scenario: Scenario, simulation_speed: float, start_time, G: nx.DiGraph):
         vehicles = scenario.vehicles
@@ -49,7 +50,7 @@ class AnnouncementPlan:
         self.update(ap)
 
     def replace(self, vId: str, timestamp: float, cIx: int):
-        ap = { x: self._plan[x] for x in self._plan.keys() }
+        ap = {x: self._plan[x] for x in self._plan.keys()}
         ap[vId] = (timestamp, cIx)
         self.update(ap)
 
@@ -157,8 +158,8 @@ class Arvernus:
 
         return paths, G
 
-    def compute_assigment_old(self):
-        """ use VRP solver"""
+    def compute_assignment_old(self):
+        """use VRP solver"""
         # compute schedule
         # self.schedule = self.compute_VRP()
         # convert to AP
@@ -173,16 +174,19 @@ class Arvernus:
         # set AP, current_assignment
 
     def compute_initial_assignment(self):
-        unassigned = [True] * len(self.scenario.vehicles)
+        unassigned_vehicles = [True] * len(self.scenario.vehicles)
+        unassigned_customers = [True] * len(self.scenario.customers)
+
         positions = [(v.coord_x, v.coord_y) for v in self.scenario.vehicles]
         times = [self.start_time] * len(self.scenario.vehicles)
 
         to_announce = list()
-        customers_remaining = len(self.scenario.customers)
 
-        while any(unassigned) and customers_remaining > 0:
-            best_option = (173345345, -1, -1)
+        while any(unassigned_vehicles) and any(unassigned_customers):
+            best_option = (self.start_time + 173345345, -1, -1)
             for cIx, customer in enumerate(self.scenario.customers):
+                if not unassigned_customers[cIx]:
+                    continue
                 for vIx, vehicles in enumerate(self.scenario.vehicles):
                     posX, posY = positions[vIx]
                     d = customer_reach_distance_m(posX, posY, customer)
@@ -193,12 +197,14 @@ class Arvernus:
             arrival_time, cIx, vIx = best_option
             if times[vIx] == self.start_time:
                 to_announce.append((times[vIx], cIx, vIx))
-                unassigned[vIx] = False
+                unassigned_vehicles[vIx] = False
+
+            unassigned_customers[cIx] = False
+
             travel_dist = travel_distance_m(self.scenario.customers[cIx])
             times[vIx] += arrival_time + self.distance_to_time(travel_dist, 8.3)
-            customers_remaining -= 1
 
-        ap_update = { x: self.ap._plan[x] for x in self.ap._plan.keys() }
+        ap_update = {}
         for timestamp, cIx, vIx in to_announce:
             ap_update[self.scenario.vehicles[vIx].id] = (timestamp, cIx)
         self.ap.update(ap_update)
@@ -310,8 +316,6 @@ class Announcer(BaseStrategy):
 
     @override
     def strategy_loop(self):
-        self.arv.compute_assigment()
-
         last_update = 0
         while True:
             ap = self.announcement_plan.get()
@@ -319,13 +323,18 @@ class Announcer(BaseStrategy):
             if not ap:
                 continue
 
-            current_time = (time() - self.start_time) * self.sim_speed
+            current_time = self.start_time + (time() - self.start_time) * self.sim_speed
 
-            pending_updates = [VehicleUpdate(vId, cId) for vId, (tm, cId) in ap if tm <= current_time and tm > last_update]
+            pending_updates = []
+            for vId, (tm, cIx) in ap.items():
+                # logging.info(f"tm: {tm}, current_time: {current_time}")
+                if tm <= current_time and tm > last_update:
+                    pending_updates.append(VehicleUpdate(vId, self.scenario.customers[cIx].id))
 
             last_update = current_time
 
-            update = UpdateScenario(pending_updates)
-            self.update_queue.put(update)
+            if len(pending_updates) > 0:
+                update = UpdateScenario(pending_updates)
+                self.update_queue.put(update)
 
-            sleep(self.sim_speed)  # busy wait
+            sleep(1.0)
